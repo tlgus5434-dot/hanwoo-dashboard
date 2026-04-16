@@ -7,14 +7,15 @@ API_KEY = '0d14fafa91c08020cfea568cf28cef3bccbb2074fee206a54fe5421537fc2fc2'
 EKAPE   = 'http://data.ekape.or.kr/openapi-data/service/user/grade'
 PORT    = int(os.environ.get('PORT', 8000))
 
-HTML = open('index.html', 'rb').read()
+with open(os.path.join(os.path.dirname(__file__), 'index.html'), 'rb') as f:
+    HTML = f.read()
 
 class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
 
-        if parsed.path == '/' or parsed.path == '/index.html':
+        if parsed.path in ('/', '/index.html'):
             self.send_response(200)
             self.send_header('Content-Type', 'text/html; charset=utf-8')
             self.end_headers()
@@ -24,33 +25,42 @@ class Handler(BaseHTTPRequestHandler):
             self.handle_api(parsed)
 
         else:
-            self.send_error(404)
+            self.send_response(404)
+            self.send_header('Content-Type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(b'Not found')
 
     def handle_api(self, parsed):
-        params = dict(urllib.parse.parse_qsl(parsed.query))
+        params   = dict(urllib.parse.parse_qsl(parsed.query))
         endpoint = parsed.path[5:]
-        ep_params = {'ServiceKey': API_KEY}
+        ep       = {'ServiceKey': API_KEY}
 
         if endpoint == 'liveGrade':
-            ep_params['auctDate'] = params.get('date', today())
-            if params.get('abatt'): ep_params['abattCd'] = params['abatt']
+            ep['auctDate'] = params.get('date', today())
+            if params.get('abatt'):
+                ep['abattCd'] = params['abatt']
             ekape_ep = 'liveauct/cattleGrade'
 
         elif endpoint == 'priceDetail':
-            ep_params.update({
-                'startYmd': params.get('start', month_start()),
-                'endYmd':   params.get('end',   today()),
-                'breedCd':  '024001',
-                'sexCd':    params.get('sex', '025003'),
+            ep.update({
+                'startYmd':        params.get('start', month_start()),
+                'endYmd':          params.get('end',   today()),
+                'breedCd':         '024001',
+                'sexCd':           params.get('sex', '025003'),
                 'defectIncludeYn': 'Y',
             })
-            if params.get('abatt'): ep_params['abattCode'] = params['abatt']
+            if params.get('abatt'):
+                ep['abattCode'] = params['abatt']
             ekape_ep = 'auct/cattlePriceDetail'
 
         else:
-            self.send_error(404); return
+            self.send_response(404)
+            self.send_header('Content-Type', 'text/plain')
+            self.end_headers()
+            self.wfile.write(b'Unknown endpoint')
+            return
 
-        qs  = urllib.parse.urlencode(ep_params)
+        qs  = urllib.parse.urlencode(ep)
         url = f'{EKAPE}/{ekape_ep}?{qs}'
 
         try:
@@ -70,8 +80,7 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(str(e).encode())
 
     def log_message(self, fmt, *args):
-        if '/api/' in (args[0] if args else ''):
-            print(f'[API] {args[0]}')
+        print(f'[{self.log_date_time_string()}] {fmt % args}')
 
 def today():
     from datetime import date
