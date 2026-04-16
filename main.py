@@ -4,7 +4,7 @@ import urllib.parse
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 API_KEY = '0d14fafa91c08020cfea568cf28cef3bccbb2074fee206a54fe5421537fc2fc2'
-EKAPE   = 'http://data.ekape.or.kr/openapi-data/service/user/grade'
+EKAPE   = 'https://data.ekape.or.kr/openapi-data/service/user/grade'
 PORT    = int(os.environ.get('PORT', 8000))
 
 with open(os.path.join(os.path.dirname(__file__), 'index.html'), 'rb') as f:
